@@ -8,7 +8,7 @@ async fn main() -> anyhow::Result<()> {
     println!("Sending SayHello Request");
 
     let result = demo_client
-        .say_hello(SayHelloRequest("Hi".to_string()))
+        .say_hello(SayHelloRequest("John Doe".to_string()))
         .await;
 
     println!("Result: {:?}", result);

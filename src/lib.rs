@@ -15,11 +15,11 @@ pub enum SomeIpClientError {
 }
 
 #[derive(Serialize, Deserialize, Debug, SomeIp)]
-#[someip(max_size = 13usize)]
+#[someip(max_size = 20usize)]
 pub struct SayHelloRequest(pub String);
 
 #[derive(Serialize, Deserialize, Debug, SomeIp)]
-#[someip(max_size = 13usize)]
+#[someip(max_size = 20usize)]
 pub struct SayHelloResponse(pub String);
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl E01HelloWorldClient {
         &mut self,
         req: SayHelloRequest,
     ) -> Result<SayHelloResponse, SomeIpClientError> {
-        let req_serialized = serde_someip::to_vec::<VSomeIpDefaultOptions, _>(&req).unwrap();
+        let req_serialized = serde_someip::to_vec::<VSomeIpSeOptions, _>(&req).unwrap();
 
         // Create header for request
         let mut someip_hdr = SomeIpHeader {
@@ -87,10 +87,9 @@ impl E01HelloWorldClient {
                                 return Err(SomeIpClientError::ErrorResponse);
                             } else if header.message_type() == MessageType::Response {
                                 let deserialized =
-                                    serde_someip::from_slice::<
-                                        VSomeIpDefaultOptions,
-                                        SayHelloResponse,
-                                    >(header.payload())
+                                    serde_someip::from_slice::<VSomeIpDeOptions, SayHelloResponse>(
+                                        header.payload(),
+                                    )
                                     .unwrap();
                                 debug!("Deserialized response={:?}", deserialized);
                                 return Ok(deserialized);
@@ -105,15 +104,50 @@ impl E01HelloWorldClient {
         }
     }
 }
-pub struct VSomeIpDefaultOptions {}
 
-impl SomeIpOptions for VSomeIpDefaultOptions {
+/// Serialization Options
+pub struct VSomeIpSeOptions {}
+
+impl SomeIpOptions for VSomeIpSeOptions {
     const BYTE_ORDER: serde_someip::options::ByteOrder =
         serde_someip::options::ByteOrder::BigEndian;
 
     // https://github.com/COVESA/capicxx-someip-runtime/blob/0ad2bdc1807fc0f078b9f9368a47ff2f3366ed13/src/CommonAPI/SomeIP/OutputStream.cpp#L368
     const STRING_WITH_BOM: bool = true;
 
+    const STRING_ENCODING: serde_someip::options::StringEncoding =
+        serde_someip::options::StringEncoding::Utf16Le;
+
+    // https://github.com/COVESA/capicxx-someip-runtime/blob/0ad2bdc1807fc0f078b9f9368a47ff2f3366ed13/src/CommonAPI/SomeIP/OutputStream.cpp#L228
+    const STRING_WITH_TERMINATOR: bool = true;
+
+    // https://github.com/COVESA/capicxx-someip-runtime/blob/0ad2bdc1807fc0f078b9f9368a47ff2f3366ed13/src/CommonAPI/SomeIP/OutputStream.cpp#L246
+    const DEFAULT_LENGTH_FIELD_SIZE: Option<serde_someip::length_fields::LengthFieldSize> =
+        Some(serde_someip::length_fields::LengthFieldSize::FourBytes);
+
+    const SERIALIZER_USE_LEGACY_WIRE_TYPE: bool = true;
+
+    const SERIALIZER_LENGTH_FIELD_SIZE_SELECTION: serde_someip::options::LengthFieldSizeSelection =
+        serde_someip::options::LengthFieldSizeSelection::AsConfigured;
+
+    const DESERIALIZER_STRICT_BOOL: bool = false;
+
+    const DESERIALIZER_ACTION_ON_TOO_MUCH_DATA: serde_someip::options::ActionOnTooMuchData =
+        serde_someip::options::ActionOnTooMuchData::Fail;
+}
+
+/// Deserialization Options
+pub struct VSomeIpDeOptions {}
+
+impl SomeIpOptions for VSomeIpDeOptions {
+    const BYTE_ORDER: serde_someip::options::ByteOrder =
+        serde_someip::options::ByteOrder::BigEndian;
+
+    // https://github.com/COVESA/capicxx-someip-runtime/blob/0ad2bdc1807fc0f078b9f9368a47ff2f3366ed13/src/CommonAPI/SomeIP/OutputStream.cpp#L368
+    const STRING_WITH_BOM: bool = true;
+
+    // The Hello World Service deployment file does not specify an encoding for the response string
+    // commonapi-someip runtime therefor defaults to utf8.
     const STRING_ENCODING: serde_someip::options::StringEncoding =
         serde_someip::options::StringEncoding::Utf8;
 

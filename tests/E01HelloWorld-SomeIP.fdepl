@@ -15,7 +15,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
         
         in {
             name {
-                SomeIpStringEncoding = utf8
+                SomeIpStringEncoding = utf16le
             }
         }
     }
