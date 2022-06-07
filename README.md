@@ -31,6 +31,6 @@ Expected output:
 
 ```
 Sending SayHello Request
-2022-05-17T19:39:57.833857Z DEBUG say_hello{self=E01HelloWorldClient { tcp_stream: PollEvented { io: Some(TcpStream { addr: 1.2.3.4:38952, peer: 1.2.3.4:30509, fd: 9 }) }, buffer: b"" } req=SayHelloRequest("Hi")}: someip_helloworld: Deserialized response=SayHelloResponse("Hello Hi!")
+2022-05-17T19:39:57.833857Z DEBUG say_hello{self=E01HelloWorldClient { tcp_stream: PollEvented { io: Some(TcpStream { addr: 1.2.3.4:38952, peer: 1.2.3.4:30509, fd: 9 }) }, buffer: b"" } req=SayHelloRequest("Hi")}: someip_helloworld: Deserialized response=SayHelloResponse("Hello John Doe!")
 Result: Ok(SayHelloResponse("Hello Hi!"))
 ```
