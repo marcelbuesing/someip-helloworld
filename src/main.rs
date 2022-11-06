@@ -4,7 +4,7 @@ use someip_helloworld::{E01HelloWorldClient, SayHelloRequest};
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let mut demo_client = E01HelloWorldClient::connect("1.2.3.4:30509").await?;
+    let mut demo_client = E01HelloWorldClient::connect().await?;
     println!("Sending SayHello Request");
 
     let result = demo_client

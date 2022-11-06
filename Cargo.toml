@@ -10,9 +10,12 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0"
+async-stream = "0.3.3"
 bytes = "1.1"
+futures = "0.3.25"
 serde = { version = "1.0", features = ["derive"] }
 serde_someip = { version = "0.2", features = ["derive", "bytes"] }
+socket2 = "0.4.7"
 someip_parse = { git = "https://github.com/JulianSchmid/someip-parse-rs.git" }
 thiserror = "1.0"
 tokio = { version = "1.0", features = ["full"] }
