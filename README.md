@@ -7,6 +7,38 @@ It makes use of the following rust crates for someip:
 - [someip_parse](https://github.com/JulianSchmid/someip-parse-rs) - for the someip header
 - [serde_someip](https://github.com/MortronMeymo/serde_someip) - for serializing the request payload and deserializing the response payload
 
+# Client Code
+
+You can find the actual client code located in `src\main.rs` and `src\lib.rs`.
+
+This example relies on constants defined by the capicxx-core-tools example e.g. the service id, method id ...
+This `lib.rs` is basically hand crafted including the constants but obviously one could generate the "dynamic" part of that code e.g. using the Franca files as input.
+
+The code essentialy does the following under the hood:
+
+1. Sends a out Service Discovery `FindService` request via the SomeIP SD multicast address.
+2. Awaits a `OfferService` response with the right details (service id, instance id, major and minor version).
+3. Connects to the service instance via the details given in the offer using TCP.
+4. Invokes the `sayHello` method on the instance and reads the response.
+
+```rs
+use someip_helloworld::{E01HelloWorldClient, SayHelloRequest};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
+    let mut demo_client = E01HelloWorldClient::connect().await?;
+
+    let result = demo_client
+        .say_hello(&SayHelloRequest("John Doe".to_string()))
+        .await;
+
+    println!("Result: {:?}", result);
+    Ok(())
+}
+```
+
 ## Run it
 
 You can run the common api example server like this:
