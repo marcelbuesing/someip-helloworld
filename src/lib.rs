@@ -10,12 +10,15 @@ use someip_parse::{
     SomeIpHeader, TransportProtocol,
 };
 use std::future;
+use std::time::Duration;
 use std::{
     io::Cursor,
     net::{Ipv4Addr, SocketAddrV4},
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, ToSocketAddrs, UdpSocket};
+use tokio::time::error::Elapsed;
+use tokio::time::timeout;
 use tracing::{error, trace};
 
 #[derive(Debug, thiserror :: Error)]
@@ -28,6 +31,8 @@ pub enum SomeIpClientError {
     ReadError(someip_parse::ReadError),
     #[error("Invalid value error")]
     ValueError(someip_parse::ValueError),
+    #[error("Timeout: Failed to receive a SomeIP OfferService")]
+    FindServiceTimeout(#[from] Elapsed),
 }
 
 #[derive(Debug)]
@@ -166,48 +171,49 @@ impl E01HelloWorldClient {
 
         pin_mut!(instances);
 
-        // Find first sd header that matches our requirements
-        let ipv4_endpoint_opt = instances
-            .try_filter_map(|(someip_header, sd_header)| {
-                trace!(
-                    "Received SD message, header: {:?}, sd header: {:?}",
-                    someip_header,
-                    sd_header
-                );
+        let mut matching_instances = instances.try_filter_map(|(someip_header, sd_header)| {
+            trace!(
+                "Received SD message, header: {:?}, sd header: {:?}",
+                someip_header,
+                sd_header
+            );
 
-                // Checks if the service entry contains the expected service details
-                let matching_sd_entry = sd_header.entries.iter().any(|sd_entry| match sd_entry {
-                    SdEntry::Service(sd_entry) => {
-                        sd_entry._type == SdServiceEntryType::OfferService
-                            && sd_entry.service_id == Self::SERVICE_ID
-                            && sd_entry.instance_id == Self::INSTANCE_ID
-                            && sd_entry.major_version == Self::MAJOR_VERSION
-                            && sd_entry.minor_version == Self::MINOR_VERSION
-                    }
-                    SdEntry::Eventgroup(_event_group) => false,
-                });
+            // Checks if the service entry contains the expected service details
+            let matching_sd_entry = sd_header.entries.iter().any(|sd_entry| match sd_entry {
+                SdEntry::Service(sd_entry) => {
+                    sd_entry._type == SdServiceEntryType::OfferService
+                        && sd_entry.service_id == Self::SERVICE_ID
+                        && sd_entry.instance_id == Self::INSTANCE_ID
+                        && sd_entry.major_version == Self::MAJOR_VERSION
+                        && sd_entry.minor_version == Self::MINOR_VERSION
+                }
+                SdEntry::Eventgroup(_event_group) => false,
+            });
 
-                if matching_sd_entry {
-                    // Check for sd option that matches our expected transport protocol
-                    let opt = sd_header.options.into_iter().find_map(|sd_option| {
-                        if let SdOption::Ipv4Endpoint(ipv4_endpoint_opt) = sd_option {
-                            // TODO UDP support
-                            if ipv4_endpoint_opt.transport_protocol == TransportProtocol::Tcp {
-                                Some(ipv4_endpoint_opt)
-                            } else {
-                                None
-                            }
+            if matching_sd_entry {
+                // Check for sd option that matches our expected transport protocol
+                let opt = sd_header.options.into_iter().find_map(|sd_option| {
+                    if let SdOption::Ipv4Endpoint(ipv4_endpoint_opt) = sd_option {
+                        // TODO UDP support
+                        if ipv4_endpoint_opt.transport_protocol == TransportProtocol::Tcp {
+                            Some(ipv4_endpoint_opt)
                         } else {
                             None
                         }
-                    });
-                    future::ready(Ok(opt))
-                } else {
-                    future::ready(Ok(None))
-                }
-            })
-            .next()
-            .await
+                    } else {
+                        None
+                    }
+                });
+                future::ready(Ok(opt))
+            } else {
+                future::ready(Ok(None))
+            }
+        });
+
+        // Find first sd header that matches our requirements
+
+        let ipv4_endpoint_opt = timeout(Duration::from_secs(5), matching_instances.next())
+            .await?
             .expect("Stream terminated")?;
 
         trace!("Found matching endpoint: {:?}", ipv4_endpoint_opt);
